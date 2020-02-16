@@ -32,10 +32,28 @@ class BalanceL1Loss(nn.Module):
         negative = loss * (1 - mask)
         positive_count = int(mask.sum())
         negative_count = min(
-                int((1 - mask).sum()),
-                int(positive_count * self.negative_ratio))
+            int((1 - mask).sum()),
+            int(positive_count * self.negative_ratio))
         negative_loss, _ = torch.topk(negative.view(-1), negative_count)
         negative_loss = negative_loss.sum() / negative_count
         positive_loss = positive.sum() / positive_count
-        return positive_loss + negative_loss,\
-            dict(l1_loss=positive_loss, nge_l1_loss=negative_loss)
+        return positive_loss + negative_loss, \
+               dict(l1_loss=positive_loss, nge_l1_loss=negative_loss)
+
+
+if __name__ == '__main__':
+    import numpy as np
+
+    torch.set_printoptions(precision=9)
+    gt = np.load('/home/adam/workspace/github/xuannianz/carrot/db/gt.npy')
+    gt = np.transpose(gt, (2, 0, 1))
+    gt = np.expand_dims(gt, axis=0)
+    mask = np.load('/home/adam/workspace/github/xuannianz/carrot/db/mask.npy')
+    mask = np.expand_dims(mask, axis=0)
+    pred = np.load('pred.npy')
+    gt = torch.tensor(gt)
+    mask = torch.tensor(mask)
+    pred = torch.tensor(pred)
+    print(gt.shape, mask.shape, pred.shape)
+    l1_loss = MaskL1Loss()
+    print(l1_loss.forward(pred, gt, mask))

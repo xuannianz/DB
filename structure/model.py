@@ -29,6 +29,7 @@ def parallelize(model, distributed, local_rank):
     else:
         return nn.DataParallel(model)
 
+
 class SegDetectorModel(nn.Module):
     def __init__(self, args, device, distributed: bool = False, local_rank: int = 0):
         super(SegDetectorModel, self).__init__()
@@ -63,4 +64,6 @@ class SegDetectorModel(nn.Module):
             loss_with_metrics = self.criterion(pred, batch)
             loss, metrics = loss_with_metrics
             return loss, pred, metrics
+        # import numpy as np
+        # np.save('pred', pred.cpu().numpy())
         return pred

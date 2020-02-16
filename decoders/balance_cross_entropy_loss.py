@@ -41,16 +41,33 @@ class BalanceCrossEntropyLoss(nn.Module):
         negative = ((1 - gt) * mask).byte()
         positive_count = int(positive.float().sum())
         negative_count = min(int(negative.float().sum()),
-                            int(positive_count * self.negative_ratio))
+                             int(positive_count * self.negative_ratio))
         loss = nn.functional.binary_cross_entropy(
             pred, gt, reduction='none')[:, 0, :, :]
         positive_loss = loss * positive.float()
         negative_loss = loss * negative.float()
         negative_loss, _ = torch.topk(negative_loss.view(-1), negative_count)
 
-        balance_loss = (positive_loss.sum() + negative_loss.sum()) /\
-            (positive_count + negative_count + self.eps)
+        balance_loss = (positive_loss.sum() + negative_loss.sum()) / \
+                       (positive_count + negative_count + self.eps)
 
         if return_origin:
             return balance_loss, loss
         return balance_loss
+
+
+if __name__ == '__main__':
+    import numpy as np
+    torch.set_printoptions(precision=9)
+    gt = np.load('/home/adam/workspace/github/xuannianz/carrot/db/gt.npy')
+    gt = np.transpose(gt, (2, 0, 1))
+    gt = np.expand_dims(gt, axis=0)
+    mask = np.load('/home/adam/workspace/github/xuannianz/carrot/db/mask.npy')
+    mask = np.expand_dims(mask, axis=0)
+    pred = np.load('pred.npy')
+    gt = torch.tensor(gt)
+    mask = torch.tensor(mask)
+    pred = torch.tensor(pred)
+    print(gt.shape, mask.shape, pred.shape)
+    bce_loss = BalanceCrossEntropyLoss()
+    print(bce_loss.forward(pred, gt, mask))

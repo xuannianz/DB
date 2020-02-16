@@ -9,6 +9,16 @@ import glob
 from concern.config import Configurable, State
 import math
 
+
+def show_polys(image, anns, window_name):
+    for ann in anns:
+        poly = np.array(ann['poly']).astype(np.int32)
+        cv2.drawContours(image, np.expand_dims(poly, axis=0), -1, (0, 255, 0), 2)
+
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.imshow(window_name, image)
+
+
 class ImageDataset(data.Dataset, Configurable):
     r'''Dataset reading from images.
     Args:
@@ -37,15 +47,16 @@ class ImageDataset(data.Dataset, Configurable):
             with open(self.data_list[i], 'r') as fid:
                 image_list = fid.readlines()
             if self.is_training:
-                image_path=[self.data_dir[i]+'/train_images/'+timg.strip() for timg in image_list]
-                gt_path=[self.data_dir[i]+'/train_gts/'+timg.strip()+'.txt' for timg in image_list]
+                image_path = [self.data_dir[i] + '/train_images/' + timg.strip() for timg in image_list]
+                gt_path = [self.data_dir[i] + '/train_gts/' + timg.strip() + '.txt' for timg in image_list]
             else:
-                image_path=[self.data_dir[i]+'/test_images/'+timg.strip() for timg in image_list]
+                image_path = [self.data_dir[i] + '/test_images/' + timg.strip() for timg in image_list]
                 print(self.data_dir[i])
                 if 'TD500' in self.data_list[i] or 'total_text' in self.data_list[i]:
-                    gt_path=[self.data_dir[i]+'/test_gts/'+timg.strip()+'.txt' for timg in image_list]
+                    gt_path = [self.data_dir[i] + '/test_gts/' + timg.strip() + '.txt' for timg in image_list]
                 else:
-                    gt_path=[self.data_dir[i]+'/test_gts/'+'gt_'+timg.strip().split('.')[0]+'.txt' for timg in image_list]
+                    gt_path = [self.data_dir[i] + '/test_gts/' + 'gt_' + timg.strip().split('.')[0] + '.txt' for timg in
+                               image_list]
             self.image_paths += image_path
             self.gt_paths += gt_path
         self.num_samples = len(self.image_paths)
@@ -76,6 +87,26 @@ class ImageDataset(data.Dataset, Configurable):
             res.append(lines)
         return res
 
+    def show(self, data):
+        mean = np.array([122.67891434, 116.66876762, 104.00698793])
+        image = data['image'].cpu().numpy()
+        image = np.transpose(image, (1, 2, 0))
+        image *= 255.
+        image[..., 0] += mean[0]
+        image[..., 1] += mean[1]
+        image[..., 2] += mean[2]
+        image = image.astype(np.uint8)
+        gt = data['gt'][0]
+        mask = data['mask']
+        thresh_map = data['thresh_map']
+        thresh_mask = data['thresh_mask']
+        show_polys(image, [], 'image')
+        show_polys((gt * 255).astype(np.uint8), [], 'gt')
+        show_polys((mask * 255).astype(np.uint8), [], 'mask')
+        show_polys((thresh_map * 255).astype(np.uint8), [], 'thresh_map')
+        show_polys((thresh_mask * 255).astype(np.uint8), [], 'thresh_mask')
+        cv2.waitKey(0)
+
     def __getitem__(self, index, retry=0):
         if index >= self.num_samples:
             index = index % self.num_samples
@@ -94,6 +125,7 @@ class ImageDataset(data.Dataset, Configurable):
         if self.processes is not None:
             for data_process in self.processes:
                 data = data_process(data)
+        # self.show(data)
         return data
 
     def __len__(self):
